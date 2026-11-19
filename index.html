@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CleanExpress - Manajemen Laundry Multi-User</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        .dark ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #334155; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .transition-all-custom { transition: all 0.25s ease-in-out; }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col transition-colors duration-300">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Header / Navbar -->
+    <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-600 text-white p-2.5 rounded-xl shadow-md shadow-blue-500/20 flex items-center justify-center">
+                    <i class="fa-solid fa-shirt text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+                        CleanExpress <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 font-medium">Multi-User</span>
+                    </h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                        <span id="sync-status-indicator" class="w-2 h-2 rounded-full bg-amber-500 inline-block animate-pulse"></span>
+                        <span id="sync-status-text">Menghubungkan ke Cloud...</span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <!-- Navigation Tabs (Desktop) -->
+                <nav class="hidden md:flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                    <button onclick="switchTab('orders')" id="tab-orders" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm transition-all">Daftar Order</button>
+                    <button onclick="switchTab('services')" id="tab-services" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all">Pengaturan Layanan</button>
+                    <button onclick="switchTab('stats')" id="tab-stats" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all">Laporan</button>
+                </nav>
+
+                <!-- Dark Mode Toggle -->
+                <button onclick="toggleDarkMode()" class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all-custom" title="Ubah Tema">
+                    <i id="theme-icon" class="fa-solid fa-moon"></i>
+                </button>
+
+                <!-- New Order Button -->
+                <button onclick="openModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-xl text-sm shadow-lg shadow-blue-600/25 flex items-center gap-2 transition-all-custom active:scale-95">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Order Baru</span>
+                </button>
+            </div>
+        </div>
+        <!-- Mobile Navigation Tabs -->
+        <div class="flex md:hidden border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-4 py-2 justify-around">
+            <button onclick="switchTab('orders')" id="tab-orders-m" class="text-xs font-semibold text-blue-600 dark:text-blue-400 pb-1 border-b-2 border-blue-600">Daftar Order</button>
+            <button onclick="switchTab('services')" id="tab-services-m" class="text-xs font-semibold text-slate-500 dark:text-slate-400 pb-1">Layanan</button>
+            <button onclick="switchTab('stats')" id="tab-stats-m" class="text-xs font-semibold text-slate-500 dark:text-slate-400 pb-1">Laporan</button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
+        
+        <!-- SECTION: ORDERS -->
+        <div id="section-orders" class="space-y-6">
+            <!-- Filter & Search Toolbar -->
+            <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
+                <div class="relative w-full md:w-80">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-search"></i>
+                    </span>
+                    <input type="text" id="search-input" oninput="renderOrders()" placeholder="Cari nama, nomor WA, atau ID..." class="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-100 placeholder-slate-400">
+                </div>
+
+                <!-- Status Filter Tabs -->
+                <div class="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-none">
+                    <button onclick="setStatusFilter('ALL')" id="filter-ALL" class="filter-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-blue-600 text-white shadow-sm transition-all-custom whitespace-nowrap">Semua (<span id="count-all">0</span>)</button>
+                    <button onclick="setStatusFilter('Diterima')" id="filter-Diterima" class="filter-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all-custom whitespace-nowrap">Diterima</button>
+                    <button onclick="setStatusFilter('Dikerjakan')" id="filter-Dikerjakan" class="filter-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all-custom whitespace-nowrap">Dikerjakan</button>
+                    <button onclick="setStatusFilter('Siap Diambil')" id="filter-Siap Diambil" class="filter-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all-custom whitespace-nowrap">Siap Diambil</button>
+                    <button onclick="setStatusFilter('Selesai')" id="filter-Selesai" class="filter-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all-custom whitespace-nowrap">Selesai</button>
+                </div>
+            </div>
+
+            <!-- Orders Grid Container -->
+            <div id="orders-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                <!-- Dynamic Cards -->
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="hidden flex-col items-center justify-center py-16 px-4 text-center">
+                <div class="w-20 h-20 bg-slate-100 dark:bg-slate-800/80 text-slate-400 rounded-3xl flex items-center justify-center text-3xl mb-4 shadow-inner">
+                    <i class="fa-solid fa-basket-shopping"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-700 dark:text-slate-200 mb-1">Belum Ada Order Laundry</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 max-w-sm mb-6">Mulai buat order baru dengan mengklik tombol di bawah.</p>
+                <button onclick="openModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2.5 rounded-xl text-sm shadow-lg shadow-blue-600/25 flex items-center gap-2 transition-all-custom">
+                    <i class="fa-solid fa-plus"><span>Buat Order Pertama</span></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- SECTION: SERVICES SETTINGS -->
+        <div id="section-services" class="space-y-6 hidden">
+            <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-6 mb-6 border-b border-slate-100 dark:border-slate-800 gap-4">
+                    <div>
+                        <h2 class="font-bold text-lg text-slate-900 dark:text-white">Kelola Layanan Laundry</h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Tambah, ubah tarif harga, atau hapus layanan yang tersedia di outlet.</p>
+                    </div>
+                    <button onclick="openServiceModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2.5 rounded-xl text-sm shadow-lg shadow-blue-600/25 flex items-center gap-2 transition-all">
+                        <i class="fa-solid fa-plus"></i> Tambah Layanan Baru
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="services-grid">
+                    <!-- Dynamic Service Cards -->
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION: STATS / REPORTS -->
+        <div id="section-stats" class="space-y-6 hidden">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-file-invoice"></i>
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Total Seluruh Order</span>
+                        <h3 id="stat-total" class="text-xl font-bold text-slate-900 dark:text-white">0</h3>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-spinner"></i>
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Sedang Diproses</span>
+                        <h3 id="stat-process" class="text-xl font-bold text-slate-900 dark:text-white">0</h3>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-bag-shopping"></i>
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Siap Diambil</span>
+                        <h3 id="stat-ready" class="text-xl font-bold text-slate-900 dark:text-white">0</h3>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-wallet"></i>
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Estimasi Pendapatan</span>
+                        <h3 id="stat-revenue" class="text-xl font-bold text-slate-900 dark:text-white">Rp 0</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- MODAL: ORDER FORM (Multi-Service Support) -->
+    <div id="order-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-6 shadow-2xl transform transition-all scale-95 opacity-0 duration-200 my-8" id="modal-content">
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-100 dark:border-slate-800">
+                <div class="flex items-center gap-3">
+                    <div id="modal-icon-bg" class="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                        <i class="fa-solid fa-circle-plus text-lg"></i>
+                    </div>
+                    <div>
+                        <h2 id="modal-title" class="font-bold text-lg text-slate-900 dark:text-white">Tambah Order Baru</h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Pilih satu atau lebih layanan sekaligus untuk pelanggan</p>
+                    </div>
+                </div>
+                <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 flex items-center justify-center transition-all">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="order-form" onsubmit="saveOrder(event)" class="space-y-4">
+                <input type="hidden" id="order-id">
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Nama Pelanggan -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5 uppercase tracking-wider">Nama Pelanggan</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-user text-sm"></i>
+                            </span>
+                            <input type="text" id="customer-name" required placeholder="Contoh: Siska Melati" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-100">
+                        </div>
+                    </div>
+
+                    <!-- Nomor WhatsApp -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5 uppercase tracking-wider">Nomor WhatsApp</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <i class="fa-brands fa-whatsapp text-sm"></i>
+                            </span>
+                            <input type="tel" id="customer-phone" required placeholder="Contoh: 081234567890" oninput="formatPhoneInput(this)" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-100">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MULTI-SERVICES BUILDER SECTION -->
+                <div class="space-y-3 pt-2">
+                    <div class="flex items-center justify-between">
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Layanan yang Dipilih (Bisa Lebih dari 1)</label>
+                        <button type="button" onclick="addServiceRow()" class="text-xs text-blue-600 dark:text-blue-400 hover:underline font-semibold flex items-center gap-1">
+                            <i class="fa-solid fa-plus"></i> Tambah Baris Layanan
+                        </button>
+                    </div>
+
+                    <div id="services-rows-container" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+                        <!-- Dynamic Service Rows injected here -->
+                    </div>
+                </div>
+
+                <!-- Catatan Khusus -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5 uppercase tracking-wider">Catatan Khusus (Opsional)</label>
+                    <textarea id="order-notes" rows="2" placeholder="Contoh: Parfum aroma lavender, pisahkan pakaian warna putih..." class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-100 placeholder-slate-400"></textarea>
+                </div>
+
+                <!-- Total Biaya Otomatis -->
+                <div class="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 p-4 rounded-2xl flex items-center justify-between">
+                    <div>
+                        <span class="text-xs text-blue-600 dark:text-blue-400 font-semibold uppercase tracking-wider block">Total Estimasi Biaya</span>
+                        <span class="text-xs text-slate-500 dark:text-slate-400" id="price-breakdown">Kalkulasi otomatis dari layanan terpilih</span>
+                    </div>
+                    <div class="text-right">
+                        <span id="total-display" class="text-xl font-bold text-blue-700 dark:text-blue-300">Rp 0</span>
+                        <input type="hidden" id="order-total" value="0">
+                    </div>
+                </div>
+
+                <!-- Modal Actions -->
+                <div class="flex items-center justify-end gap-3 pt-3">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">Batal</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium shadow-lg shadow-blue-600/25 transition-all">Simpan Order</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: SERVICE CONFIGURATOR -->
+    <div id="service-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl">
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-100 dark:border-slate-800">
+                <h3 class="font-bold text-base text-slate-900 dark:text-white" id="service-modal-title">Tambah / Edit Layanan</h3>
+                <button onclick="closeServiceModal()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="service-form" onsubmit="saveServiceConfig(event)" class="space-y-4">
+                <input type="hidden" id="service-id-key">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5 uppercase">Nama Layanan</label>
+                    <input type="text" id="cfg-service-name" required placeholder="Contoh: Cuci Kilat 3 Jam" class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-100">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5 uppercase">Harga (Rp)</label>
+                        <input type="number" min="0" id="cfg-service-price" required placeholder="10000" class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-100">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5 uppercase">Satuan</label>
+                        <select id="cfg-service-unit" class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-100">
+                            <option value="kg">Kg</option>
+                            <option value="pcs">Pcs</option>
+                            <option value="pasang">Pasang</option>
+                            <option value="meter">Meter</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" onclick="closeServiceModal()" class="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300">Batal</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium">Simpan Layanan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-auto py-6 text-center text-xs text-slate-400 dark:text-slate-600 border-t border-slate-200 dark:border-slate-800">
+        <p>CleanExpress Multi-User Laundry Management &bull; Real-time Cloud Synced</p>
+    </footer>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables provided by environment or fallback
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'cleanexpress-default-app';
+        const firebaseConfig = {
+            apiKey: "AIzaSyDGKsM0Cnd008g7XTXtZbzwMxj6gxN-5IA",
+            authDomain: "amani-karpet.firebaseapp.com",
+            projectId: "amani-karpet",
+            storageBucket: "amani-karpet.firebasestorage.app",
+            messagingSenderId: "318938317751",
+            appId: "1:318938317751:web:a18339d9027115badd9e32",
+            measurementId: "G-L3ZBZRPD1L"
+        };
+
+        // Default Services if none exist
+        const defaultServices = [
+            { id: 'srv-1', name: 'Cuci Kering', price: 6000, unit: 'kg' },
+            { id: 'srv-2', name: 'Cuci Setrika', price: 8000, unit: 'kg' },
+            { id: 'srv-3', name: 'Setrika Saja', price: 5000, unit: 'kg' },
+            { id: 'srv-4', name: 'Cuci Karpet', price: 25000, unit: 'pcs' },
+            { id: 'srv-5', name: 'Cuci Sepatu', price: 35000, unit: 'pasang' },
+            { id: 'srv-6', name: 'Express Kilat', price: 12000, unit: 'kg' }
+        ];
+
+        // App States
+        window.appData = {
+            orders: [],
+            services: defaultServices
+        };
+
+        let db, auth, currentUser = null;
+        let unsubscribeOrders = null;
+        let unsubscribeServices = null;
+
+        // Initialize Firebase & Auth
+        async function initFirebaseApp() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                if (token) {
+                    await signInWithCustomToken(auth, token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        currentUser = user;
+                        updateSyncStatus(true, 'Terhubung ke Cloud (Multi-User Live)');
+                        startRealtimeSync();
+                    } else {
+                        updateSyncStatus(false, 'Mode Offline (Lokal)');
+                        loadFallbackLocalStorage();
+                    }
+                });
+            } catch (err) {
+                console.warn("Cloud connection fallback to LocalStorage:", err);
+                updateSyncStatus(false, 'Mode Lokal (Offline)');
+                loadFallbackLocalStorage();
+            }
+        }
+
+        function updateSyncStatus(isOnline, text) {
+            const indicator = document.getElementById('sync-status-indicator');
+            const statusText = document.getElementById('sync-status-text');
+            if (indicator && statusText) {
+                indicator.className = `w-2 h-2 rounded-full inline-block ${isOnline ? 'bg-emerald-500' : 'bg-amber-500'}`;
+                statusText.innerText = text;
+            }
+        }
+
+        // Realtime Sync with Firestore
+        function startRealtimeSync() {
+            if (!db) return;
+            
+            // Sync Services Collection
+            const servicesCol = collection(db, 'artifacts', appId, 'public', 'data', 'services');
+            unsubscribeServices = onSnapshot(servicesCol, (snapshot) => {
+                if (!snapshot.empty) {
+                    window.appData.services = [];
+                    snapshot.forEach(docSnap => {
+                        window.appData.services.push({ id: docSnap.id, ...docSnap.data() });
+                    });
+                } else {
+                    // Seed default services if empty
+                    defaultServices.forEach(async (srv) => {
+                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'services', srv.id), srv);
+                    });
+                }
+                renderServicesList();
+                updateServiceDropdowns();
+            }, (error) => {
+                console.error("Services sync error:", error);
+            });
+
+            // Sync Orders Collection
+            const ordersCol = collection(db, 'artifacts', appId, 'public', 'data', 'orders');
+            unsubscribeOrders = onSnapshot(ordersCol, (snapshot) => {
+                window.appData.orders = [];
+                snapshot.forEach(docSnap => {
+                    window.appData.orders.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                // Sort by date/timestamp descending
+                window.appData.orders.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                renderOrders();
+                updateStats();
+            }, (error) => {
+                console.error("Orders sync error:", error);
+            });
+        }
+
+        // Fallback LocalStorage if offline
+        function loadFallbackLocalStorage() {
+            const savedOrders = localStorage.getItem('cleanexpress_orders');
+            const savedServices = localStorage.getItem('cleanexpress_services');
+            if (savedOrders) window.appData.orders = JSON.parse(savedOrders);
+            if (savedServices) window.appData.services = JSON.parse(savedServices);
+            else window.appData.services = defaultServices;
+
+            renderOrders();
+            renderServicesList();
+            updateServiceDropdowns();
+            updateStats();
+        }
+
+        // Global Save Order
+        window.saveOrderToCloudOrLocal = async function(orderData) {
+            if (db && currentUser) {
+                try {
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', orderData.id), orderData);
+                    return true;
+                } catch (e) {
+                    console.error("Error saving order to cloud:", e);
+                }
+            }
+            // Fallback LocalStorage
+            const idx = window.appData.orders.findIndex(o => o.id === orderData.id);
+            if (idx !== -1) {
+                window.appData.orders[idx] = orderData;
+            } else {
+                window.appData.orders.unshift(orderData);
+            }
+            localStorage.setItem('cleanexpress_orders', JSON.stringify(window.appData.orders));
+            renderOrders();
+            updateStats();
+            return true;
+        }
+
+        window.deleteOrderFromCloudOrLocal = async function(id) {
+            if (db && currentUser) {
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', id));
+                    return true;
+                } catch (e) {
+                    console.error("Error deleting order:", e);
+                }
+            }
+            window.appData.orders = window.appData.orders.filter(o => o.id !== id);
+            localStorage.setItem('cleanexpress_orders', JSON.stringify(window.appData.orders));
+            renderOrders();
+            updateStats();
+            return true;
+        }
+
+        window.saveServiceToCloudOrLocal = async function(serviceData) {
+            if (db && currentUser) {
+                try {
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'services', serviceData.id), serviceData);
+                    return true;
+                } catch (e) {
+                    console.error("Error saving service:", e);
+                }
+            }
+            const idx = window.appData.services.findIndex(s => s.id === serviceData.id);
+            if (idx !== -1) window.appData.services[idx] = serviceData;
+            else window.appData.services.push(serviceData);
+            localStorage.setItem('cleanexpress_services', JSON.stringify(window.appData.services));
+            renderServicesList();
+            updateServiceDropdowns();
+            return true;
+        }
+
+        window.deleteServiceFromCloudOrLocal = async function(id) {
+            if (db && currentUser) {
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'services', id));
+                    return true;
+                } catch (e) {
+                    console.error("Error deleting service:", e);
+                }
+            }
+            window.appData.services = window.appData.services.filter(s => s.id !== id);
+            localStorage.setItem('cleanexpress_services', JSON.stringify(window.appData.services));
+            renderServicesList();
+            updateServiceDropdowns();
+            return true;
+        }
+
+        // Run Init
+        initFirebaseApp();
+    </script>
+
+    <!-- Application Script Logic -->
+    <script>
+        let currentFilter = 'ALL';
+        let currentTab = 'orders';
+        const statusFlow = ['Diterima', 'Dikerjakan', 'Siap Diambil', 'Selesai'];
+        
+        const statusConfig = {
+            'Diterima': { bg: 'bg-amber-100 dark:bg-amber-950/50', text: 'text-amber-700 dark:text-amber-400', border: 'border-amber-200 dark:border-amber-800/60', icon: 'fa-file-invoice' },
+            'Dikerjakan': { bg: 'bg-blue-100 dark:bg-blue-950/50', text: 'text-blue-700 dark:text-blue-400', border: 'border-blue-200 dark:border-blue-800/60', icon: 'fa-spinner fa-spin' },
+            'Siap Diambil': { bg: 'bg-purple-100 dark:bg-purple-950/50', text: 'text-purple-700 dark:text-purple-400', border: 'border-purple-200 dark:border-purple-800/60', icon: 'fa-bag-shopping' },
+            'Selesai': { bg: 'bg-emerald-100 dark:bg-emerald-950/50', text: 'text-emerald-700 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-800/60', icon: 'fa-circle-check' }
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+        });
+
+        // Theme Toggle Handler
+        function initTheme() {
+            if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                document.getElementById('theme-icon').className = 'fa-solid fa-sun';
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.getElementById('theme-icon').className = 'fa-solid fa-moon';
+            }
+        }
+
+        function toggleDarkMode() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+                document.getElementById('theme-icon').className = 'fa-solid fa-moon';
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+                document.getElementById('theme-icon').className = 'fa-solid fa-sun';
+            }
+        }
+
+        // Tab Switcher
+        function switchTab(tab) {
+            currentTab = tab;
+            ['orders', 'services', 'stats'].forEach(t => {
+                const el = document.getElementById(`section-${t}`);
+                const btnDesktop = document.getElementById(`tab-${t}`);
+                const btnMobile = document.getElementById(`tab-${t}-m`);
+                if (el) el.classList.toggle('hidden', t !== tab);
+                if (btnDesktop) {
+                    btnDesktop.className = t === tab 
+                        ? 'px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm transition-all'
+                        : 'px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all';
+                }
+                if (btnMobile) {
+                    btnMobile.className = t === tab
+                        ? 'text-xs font-semibold text-blue-600 dark:text-blue-400 pb-1 border-b-2 border-blue-600'
+                        : 'text-xs font-semibold text-slate-500 dark:text-slate-400 pb-1';
+                }
+            });
+        }
+
+        // Modal Controls for Order
+        function openModal(orderId = null) {
+            const modal = document.getElementById('order-modal');
+            const modalContent = document.getElementById('modal-content');
+            const form = document.getElementById('order-form');
+            form.reset();
+            document.getElementById('order-id').value = '';
+            document.getElementById('services-rows-container').innerHTML = '';
+            document.getElementById('total-display').innerText = 'Rp 0';
+            document.getElementById('price-breakdown').innerText = 'Pilih layanan dan masukkan berat/jumlah';
+
+            if (orderId) {
+                document.getElementById('modal-title').innerText = 'Edit Order Laundry';
+                document.getElementById('modal-icon-bg').className = 'w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center';
+                
+                const order = window.appData.orders.find(o => o.id === orderId);
+                if (order) {
+                    document.getElementById('order-id').value = order.id;
+                    document.getElementById('customer-name').value = order.name;
+                    document.getElementById('customer-phone').value = order.phone;
+                    document.getElementById('order-notes').value = order.notes || '';
+                    
+                    if (order.selectedServices && order.selectedServices.length > 0) {
+                        order.selectedServices.forEach(s => addServiceRow(s.serviceId, s.quantity));
+                    } else if (order.service) {
+                        // Legacy single service fallback
+                        const matching = window.appData.services.find(s => s.name === order.service);
+                        addServiceRow(matching ? matching.id : '', order.weight || 1);
+                    }
+                    calculateOrderTotal();
+                }
+            } else {
+                document.getElementById('modal-title').innerText = 'Tambah Order Baru';
+                document.getElementById('modal-icon-bg').className = 'w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center';
+                // Add default 2 rows so user can instantly pick multiple services!
+                addServiceRow();
+                addServiceRow();
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => {
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                modalContent.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('order-modal');
+            const modalContent = document.getElementById('modal-content');
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            modalContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.remove('flex');
+                modal.classList.add('hidden');
+            }, 200);
+        }
+
+        // Multi-Service Row Handler in Order Form
+        function addServiceRow(selectedServiceId = '', qty = 1) {
+            const container = document.getElementById('services-rows-container');
+            const rowId = 'srv-row-' + Math.random().toString(36).substr(2, 9);
+
+            let optionsHtml = '<option value="" disabled selected>Pilih Layanan</option>';
+            window.appData.services.forEach(srv => {
+                const selected = srv.id === selectedServiceId ? 'selected' : '';
+                optionsHtml += `<option value="${srv.id}" data-price="${srv.price}" data-unit="${srv.unit}" ${selected}>${srv.name} (${formatRupiah(srv.price)} / ${srv.unit})</option>`;
+            });
+
+            const rowDiv = document.createElement('div');
+            rowDiv.id = rowId;
+            rowDiv.className = 'flex items-center gap-2 bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-700';
+            rowDiv.innerHTML = `
+                <div class="flex-grow">
+                    <select onchange="calculateOrderTotal()" class="service-select-item w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-800 dark:text-slate-100">
+                        ${optionsHtml}
+                    </select>
+                </div>
+                <div class="w-28">
+                    <input type="number" step="0.5" min="0.5" value="${qty}" oninput="calculateOrderTotal()" placeholder="Jumlah" class="service-qty-item w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-800 dark:text-slate-100">
+                </div>
+                <button type="button" onclick="removeServiceRow('${rowId}')" class="p-2 text-rose-500 hover:text-rose-700 transition-all rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40" title="Hapus Layanan">
+                    <i class="fa-solid fa-trash text-xs"></i>
+                </button>
+            `;
+            container.appendChild(rowDiv);
+            calculateOrderTotal();
+        }
+
+        function removeServiceRow(rowId) {
+            const row = document.getElementById(rowId);
+            if (row) row.remove();
+            calculateOrderTotal();
+        }
+
+        function updateServiceDropdowns() {
+            // Refreshes options if services config changes
+            // Handled dynamically or when opening modal
+        }
+
+        // Calculate Total Price for Multiple Services
+        function calculateOrderTotal() {
+            const rows = document.querySelectorAll('#services-rows-container > div');
+            let grandTotal = 0;
+            let summaryTextParts = [];
+
+            rows.forEach(row => {
+                const select = row.querySelector('.service-select-item');
+                const qtyInput = row.querySelector('.service-qty-item');
+                const selectedOption = select.options[select.selectedIndex];
+                
+                if (selectedOption && selectedOption.value) {
+                    const price = parseFloat(selectedOption.dataset.price) || 0;
+                    const unit = selectedOption.dataset.unit || 'kg';
+                    const qty = parseFloat(qtyInput.value) || 0;
+                    const subtotal = price * qty;
+                    grandTotal += subtotal;
+                    summaryTextParts.push(`${selectedOption.text.split('(')[0].trim()} (${qty} ${unit})`);
+                }
+            });
+
+            document.getElementById('order-total').value = grandTotal;
+            document.getElementById('total-display').innerText = formatRupiah(grandTotal);
+            
+            const breakdown = document.getElementById('price-breakdown');
+            if (summaryTextParts.length > 0) {
+                breakdown.innerText = summaryTextParts.join(' + ');
+            } else {
+                breakdown.innerText = 'Pilih layanan dan masukkan kuantitas';
+            }
+        }
+
+        // Save Order Handler
+        async function saveOrder(event) {
+            event.preventDefault();
+
+            const id = document.getElementById('order-id').value;
+            const name = document.getElementById('customer-name').value.trim();
+            const phone = document.getElementById('customer-phone').value.trim();
+            const notes = document.getElementById('order-notes').value.trim();
+            const total = parseInt(document.getElementById('order-total').value) || 0;
+
+            // Collect selected services rows
+            const rows = document.querySelectorAll('#services-rows-container > div');
+            const selectedServices = [];
+            
+            rows.forEach(row => {
+                const select = row.querySelector('.service-select-item');
+                const qtyInput = row.querySelector('.service-qty-item');
+                const opt = select.options[select.selectedIndex];
+                if (opt && opt.value) {
+                    selectedServices.push({
+                        serviceId: opt.value,
+                        serviceName: opt.text.split('(')[0].trim(),
+                        price: parseFloat(opt.dataset.price),
+                        unit: opt.dataset.unit,
+                        quantity: parseFloat(qtyInput.value) || 1
+                    });
+                }
+            });
+
+            if (selectedServices.length === 0) {
+                showToast('Harap pilih minimal 1 layanan laundry!', 'error');
+                return;
+            }
+
+            const orderId = id ? id : 'ORD-' + Date.now().toString().slice(-6);
+            const existingOrder = window.appData.orders.find(o => o.id === orderId);
+
+            const orderData = {
+                id: orderId,
+                name,
+                phone,
+                notes,
+                total,
+                selectedServices,
+                status: existingOrder ? existingOrder.status : 'Diterima',
+                date: existingOrder ? existingOrder.date : new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+                timestamp: existingOrder ? existingOrder.timestamp : Date.now()
+            };
+
+            await window.saveOrderToCloudOrLocal(orderData);
+            closeModal();
+            showToast(id ? 'Order berhasil diperbarui!' : 'Order baru berhasil dibuat!', 'success');
+        }
+
+        // Service Modal Management
+        function openServiceModal(srvId = null) {
+            const modal = document.getElementById('service-modal');
+            const form = document.getElementById('service-form');
+            form.reset();
+            document.getElementById('service-id-key').value = '';
+
+            if (srvId) {
+                document.getElementById('service-modal-title').innerText = 'Edit Layanan';
+                const srv = window.appData.services.find(s => s.id === srvId);
+                if (srv) {
+                    document.getElementById('service-id-key').value = srv.id;
+                    document.getElementById('cfg-service-name').value = srv.name;
+                    document.getElementById('cfg-service-price').value = srv.price;
+                    document.getElementById('cfg-service-unit').value = srv.unit;
+                }
+            } else {
+                document.getElementById('service-modal-title').innerText = 'Tambah Layanan Baru';
+            }
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeServiceModal() {
+            document.getElementById('service-modal').classList.remove('flex');
+            document.getElementById('service-modal').classList.add('hidden');
+        }
+
+        async function saveServiceConfig(event) {
+            event.preventDefault();
+            const idKey = document.getElementById('service-id-key').value;
+            const name = document.getElementById('cfg-service-name').value.trim();
+            const price = parseFloat(document.getElementById('cfg-service-price').value) || 0;
+            const unit = document.getElementById('cfg-service-unit').value;
+
+            const serviceData = {
+                id: idKey ? idKey : 'srv-' + Date.now().toString().slice(-6),
+                name,
+                price,
+                unit
+            };
+
+            await window.saveServiceToCloudOrLocal(serviceData);
+            closeServiceModal();
+            showToast('Layanan berhasil disimpan!', 'success');
+        }
+
+        async function deleteService(id) {
+            if (confirm('Hapus layanan ini?')) {
+                await window.deleteServiceFromCloudOrLocal(id);
+                showToast('Layanan dihapus', 'info');
+            }
+        }
+
+        // Delete Order
+        async function deleteOrder(id) {
+            if (confirm('Apakah Anda yakin ingin menghapus order ini?')) {
+                await window.deleteOrderFromCloudOrLocal(id);
+                showToast('Order berhasil dihapus', 'info');
+            }
+        }
+
+        // Status Handler
+        async function advanceStatus(id) {
+            const order = window.appData.orders.find(o => o.id === id);
+            if (!order) return;
+            const idx = statusFlow.indexOf(order.status);
+            if (idx < statusFlow.length - 1) {
+                order.status = statusFlow[idx + 1];
+                await window.saveOrderToCloudOrLocal(order);
+                showToast(`Status diubah ke: ${order.status}`, 'success');
+            }
+        }
+
+        async function setSpecificStatus(id, newStatus) {
+            const order = window.appData.orders.find(o => o.id === id);
+            if (!order) return;
+            order.status = newStatus;
+            await window.saveOrderToCloudOrLocal(order);
+            showToast(`Status diperbarui ke ${newStatus}`, 'success');
+        }
+
+        // WhatsApp Notification (One-Tap WA Integration)
+        function sendWhatsApp(id) {
+            const order = window.appData.orders.find(o => o.id === id);
+            if (!order) return;
+
+            let phone = order.phone.replace(/\D/g, '');
+            if (phone.startsWith('0')) phone = '62' + phone.slice(1);
+            else if (!phone.startsWith('62')) phone = '62' + phone;
+
+            let servicesDesc = '';
+            if (order.selectedServices && order.selectedServices.length > 0) {
+                servicesDesc = order.selectedServices.map(s => `- ${s.serviceName}: ${s.quantity} ${s.unit}`).join('\n');
+            } else {
+                servicesDesc = `- ${order.service || 'Laundry'}: ${order.weight || 1} kg`;
+            }
+
+            let statusMessage = '';
+            if (order.status === 'Diterima') {
+                statusMessage = `Halo Kak *${order.name}*, cucian Anda telah kami terima di *CleanExpress* dan akan segera diproses. Terima kasih! 🙏`;
+            } else if (order.status === 'Dikerjakan') {
+                statusMessage = `Halo Kak *${order.name}*, cucian Anda saat ini sedang dalam proses pengerjaan (*cuci/setrika*). Mohon ditunggu ya! ✨`;
+            } else if (order.status === 'Siap Diambil') {
+                statusMessage = `Kabar baik Kak *${order.name}*! Cucian Anda telah *Selesai & Siap Diambil*. Total biaya: *${formatRupiah(order.total)}*. Silakan datang ke outlet kami. Terima kasih! 📦🚀`;
+            } else {
+                statusMessage = `Halo Kak *${order.name}*, order laundry Anda (${order.id}) telah *Selesai*. Terima kasih sudah berlangganan di CleanExpress! ⭐⭐⭐⭐⭐`;
+            }
+
+            const message = `*--- NOTIFIKASI LAUNDRY CLEANEXPRESS ---*
+
+No. Order: *${order.id}*
+Rincian Layanan:
+${servicesDesc}
+
+Total Biaya: *${formatRupiah(order.total)}*
+Status Terkini: *${order.status}*
+
+${statusMessage}`;
+
+            const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+            window.open(waUrl, '_blank');
+        }
+
+        // Filter status tab
+        function setStatusFilter(status) {
+            currentFilter = status;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.className = 'filter-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all-custom whitespace-nowrap';
+            });
+            const activeBtn = document.getElementById(`filter-${status}`);
+            if (activeBtn) {
+                activeBtn.className = 'filter-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-blue-600 text-white shadow-sm transition-all-custom whitespace-nowrap';
+            }
+            renderOrders();
+        }
+
+        // Render Orders Grid
+        function renderOrders() {
+            const container = document.getElementById('orders-container');
+            const emptyState = document.getElementById('empty-state');
+            const searchQuery = (document.getElementById('search-input')?.value || '').toLowerCase();
+
+            // Update badge counts
+            const totalCount = window.appData.orders.length;
+            const countEl = document.getElementById('count-all');
+            if (countEl) countEl.innerText = totalCount;
+
+            let filtered = window.appData.orders.filter(order => {
+                const matchesStatus = currentFilter === 'ALL' || order.status === currentFilter;
+                const matchesSearch = order.name.toLowerCase().includes(searchQuery) ||
+                                      order.phone.toLowerCase().includes(searchQuery) ||
+                                      order.id.toLowerCase().includes(searchQuery) ||
+                                      (order.notes && order.notes.toLowerCase().includes(searchQuery));
+                return matchesStatus && matchesSearch;
+            });
+
+            if (filtered.length === 0) {
+                if (container) container.innerHTML = '';
+                if (emptyState) {
+                    emptyState.classList.remove('hidden');
+                    emptyState.classList.add('flex');
+                }
+                return;
+            }
+
+            if (emptyState) {
+                emptyState.classList.remove('flex');
+                emptyState.classList.add('hidden');
+            }
+
+            let html = '';
+            filtered.forEach(order => {
+                const cfg = statusConfig[order.status] || statusConfig['Diterima'];
+                const currentIdx = statusFlow.indexOf(order.status);
+                const nextStatus = currentIdx < statusFlow.length - 1 ? statusFlow[currentIdx + 1] : null;
+
+                // Build services list badges
+                let servicesBadgesHtml = '';
+                if (order.selectedServices && order.selectedServices.length > 0) {
+                    order.selectedServices.forEach(s => {
+                        servicesBadgesHtml += `<div class="flex items-center justify-between text-xs py-0.5">
+                            <span class="text-slate-600 dark:text-slate-300 font-medium"><i class="fa-solid fa-tag text-[10px] text-blue-500 mr-1.5"></i>${s.serviceName} (${s.quantity} ${s.unit})</span>
+                            <span class="text-slate-500 dark:text-slate-400 font-mono">${formatRupiah(s.price * s.quantity)}</span>
+                        </div>`;
+                    });
+                } else if (order.service) {
+                    servicesBadgesHtml += `<div class="flex items-center justify-between text-xs py-0.5">
+                        <span class="text-slate-600 dark:text-slate-300 font-medium">${order.service} (${order.weight} kg)</span>
+                        <span class="text-slate-500 dark:text-slate-400 font-mono">${formatRupiah(order.total)}</span>
+                    </div>`;
+                }
+
+                html += `
+                    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all-custom flex flex-col justify-between gap-4">
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-mono font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1 rounded-lg">${order.id}</span>
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${cfg.bg} ${cfg.text} border ${cfg.border}">
+                                    <i class="fa-solid ${cfg.icon}"></i>
+                                    <span>${order.status}</span>
+                                </span>
+                            </div>
+
+                            <h3 class="font-bold text-base text-slate-900 dark:text-white">${order.name}</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5">
+                                <i class="fa-brands fa-whatsapp text-emerald-600"></i> ${order.phone}
+                            </p>
+                        </div>
+
+                        <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3.5 border border-slate-100 dark:border-slate-800 space-y-1.5">
+                            <div class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Rincian Layanan:</div>
+                            ${servicesBadgesHtml}
+                            <div class="flex items-center justify-between text-xs pt-2 mt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                                <span class="text-slate-500 dark:text-slate-400 font-bold">Total Biaya:</span>
+                                <span class="font-bold text-sm text-blue-600 dark:text-blue-400">${formatRupiah(order.total)}</span>
+                            </div>
+                            ${order.notes ? `
+                                <div class="text-[11px] text-slate-500 dark:text-slate-400 bg-amber-50 dark:bg-amber-950/30 p-2 rounded-lg border border-amber-200/50 dark:border-amber-800/30 mt-2">
+                                    <strong class="text-amber-700 dark:text-amber-400">Catatan:</strong> ${order.notes}
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+                            <span><i class="fa-regular fa-clock mr-1"></i>${order.date}</span>
+                            <div class="relative group">
+                                <button class="text-blue-600 dark:text-blue-400 hover:underline font-medium flex items-center gap-1">
+                                    Ubah Status <i class="fa-solid fa-chevron-down text-[9px]"></i>
+                                </button>
+                                <div class="absolute right-0 bottom-full mb-1 hidden group-hover:block bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl py-1 w-36 z-20">
+                                    <button onclick="setSpecificStatus('${order.id}', 'Diterima')" class="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200">Diterima</button>
+                                    <button onclick="setSpecificStatus('${order.id}', 'Dikerjakan')" class="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200">Dikerjakan</button>
+                                    <button onclick="setSpecificStatus('${order.id}', 'Siap Diambil')" class="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200">Siap Diambil</button>
+                                    <button onclick="setSpecificStatus('${order.id}', 'Selesai')" class="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200">Selesai</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                            <button onclick="sendWhatsApp('${order.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all active:scale-95">
+                                <i class="fa-brands fa-whatsapp text-sm"></i>
+                                <span>Kabari WA</span>
+                            </button>
+
+                            <div class="flex gap-1">
+                                ${nextStatus ? `
+                                    <button onclick="advanceStatus('${order.id}')" title="Lanjut: ${nextStatus}" class="flex-grow bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900 text-blue-600 dark:text-blue-300 font-medium py-2 px-2 rounded-xl text-xs flex items-center justify-center gap-1 transition-all">
+                                        <span>Proses</span>
+                                        <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                                    </button>
+                                ` : `
+                                    <button onclick="openModal('${order.id}')" class="flex-grow bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium py-2 px-2 rounded-xl text-xs flex items-center justify-center gap-1 transition-all">
+                                        <i class="fa-solid fa-pen"></i> Edit
+                                    </button>
+                                `}
+                                <button onclick="deleteOrder('${order.id}')" class="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900 transition-all" title="Hapus">
+                                    <i class="fa-solid fa-trash text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            if (container) container.innerHTML = html;
+        }
+
+        // Render Services List
+        function renderServicesList() {
+            const grid = document.getElementById('services-grid');
+            if (!grid) return;
+
+            let html = '';
+            window.appData.services.forEach(srv => {
+                html += `
+                    <div class="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 p-4 rounded-2xl flex items-center justify-between">
+                        <div>
+                            <h4 class="font-bold text-sm text-slate-900 dark:text-white">${srv.name}</h4>
+                            <p class="text-xs text-blue-600 dark:text-blue-400 font-semibold mt-0.5">${formatRupiah(srv.price)} <span class="text-slate-400 font-normal">/ ${srv.unit}</span></p>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button onclick="openServiceModal('${srv.id}')" class="p-2 rounded-xl bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 transition-all text-xs" title="Edit">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <button onclick="deleteService('${srv.id}')" class="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900 transition-all text-xs" title="Hapus">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            grid.innerHTML = html;
+        }
+
+        // Update Stats / Reports
+        function updateStats() {
+            const total = window.appData.orders.length;
+            const process = window.appData.orders.filter(o => o.status === 'Diterima' || o.status === 'Dikerjakan').length;
+            const ready = window.appData.orders.filter(o => o.status === 'Siap Diambil').length;
+            const revenue = window.appData.orders.reduce((acc, o) => acc + (o.total || 0), 0);
+
+            const elTotal = document.getElementById('stat-total');
+            const elProcess = document.getElementById('stat-process');
+            const elReady = document.getElementById('stat-ready');
+            const elRevenue = document.getElementById('stat-revenue');
+
+            if (elTotal) elTotal.innerText = total;
+            if (elProcess) elProcess.innerText = process;
+            if (elReady) elReady.innerText = ready;
+            if (elRevenue) elRevenue.innerText = formatRupiah(revenue);
+        }
+
+        // Helper: Format Rupiah
+        function formatRupiah(number) {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(number);
+        }
+
+        // Toast Notification
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const toast = document.createElement('div');
+            
+            let bgClass = 'bg-emerald-600 text-white';
+            let icon = 'fa-circle-check';
+            if (type === 'info') {
+                bgClass = 'bg-blue-600 text-white';
+                icon = 'fa-circle-info';
+            } else if (type === 'error') {
+                bgClass = 'bg-rose-600 text-white';
+                icon = 'fa-triangle-exclamation';
+            }
+
+            toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl ${bgClass} text-xs font-medium transform translate-y-4 opacity-0 transition-all duration-300`;
+            toast.innerHTML = `<i class="fa-solid ${icon} text-base"></i><span>${message}</span>`;
+            
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove('translate-y-4', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('translate-y-4', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
